@@ -19,7 +19,8 @@ jobs:
       - name: Projekt entpacken
         run: |
           mkdir -p app
-          unzip -q dart-party-upload.zip -d app
+          ZIP_FILE=$(find . -maxdepth 1 -name 'dart-party-upload*.zip' -print -quit)
+          unzip -q "$ZIP_FILE" -d app
 
       - name: Android-Projekt erzeugen
         working-directory: app/dart_party_android
