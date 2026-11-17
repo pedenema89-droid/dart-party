@@ -1,3 +1,4 @@
+
 name: Build Dart Party Android APK
 
 on:
@@ -29,6 +30,56 @@ jobs:
         working-directory: app/dart_party_android
         run: flutter create --project-name dart_party --platforms android .
 
+      - name: Release-Keystore einrichten
+        working-directory: app/dart_party_android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/dart-party-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          export RELEASE_KEYSTORE="$KEYSTORE"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          path = Path("android/app/build.gradle.kts")
+          text = path.read_text(encoding="utf-8")
+
+          if 'signingConfigs.create("release")' in text:
+              raise SystemExit("Release-Signierung ist bereits eingerichtet.")
+
+          signing = """
+              signingConfigs {
+                  create("release") {
+                      storeFile = file(System.getenv("RELEASE_KEYSTORE"))
+                      storePassword = System.getenv("ANDROID_STORE_PASSWORD")
+                      keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+          """
+
+          marker = "    buildTypes {"
+          if marker not in text:
+              raise SystemExit("buildTypes-Block nicht gefunden.")
+
+          text = text.replace(marker, signing + "\\n" + marker, 1)
+          text = text.replace(
+              'signingConfig = signingConfigs.getByName("debug")',
+              'signingConfig = signingConfigs.getByName("release")'
+          )
+
+          if 'signingConfig = signingConfigs.getByName("release")' not in text:
+              raise SystemExit("Release-Signierung konnte nicht aktiviert werden.")
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
       - name: Gradle-Repositories für Kotlin-Abhängigkeiten ergänzen
         working-directory: app/dart_party_android
         run: |
@@ -39,10 +90,8 @@ jobs:
           text = path.read_text(encoding="utf-8")
           start = text.find("pluginManagement")
           if start < 0:
-              raise SystemExit("pluginManagement-Block fehlt in settings.gradle.kts")
+              raise SystemExit("pluginManagement-Block fehlt")
           open_brace = text.find("{", start)
-          if open_brace < 0:
-              raise SystemExit("pluginManagement-Block ist ungültig")
           depth = 0
           end = None
           for i in range(open_brace, len(text)):
@@ -54,25 +103,22 @@ jobs:
                       end = i
                       break
           if end is None:
-              raise SystemExit("pluginManagement-Block ist nicht geschlossen")
+              raise SystemExit("pluginManagement-Block ungültig")
 
           block = text[start:end + 1]
           repo_pos = block.find("repositories")
           if repo_pos < 0:
               insert = block.find("{") + 1
-              additions = [
-                  "    repositories {",
-                  '        maven { url = uri("https://repo.maven.apache.org/maven2") }',
-                  "        google()",
-                  "        mavenCentral()",
-                  "        gradlePluginPortal()",
-                  "    }",
-              ]
-              block = block[:insert] + "\n" + "\n".join(additions) + block[insert:]
+              block = block[:insert] + """
+              repositories {
+                  maven { url = uri("https://repo.maven.apache.org/maven2") }
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+              """ + block[insert:]
           else:
               repo_open = block.find("{", repo_pos)
-              if repo_open < 0:
-                  raise SystemExit("pluginManagement.repositories ist ungültig")
               repos_end = None
               depth = 0
               for i in range(repo_open, len(block)):
@@ -83,25 +129,20 @@ jobs:
                       if depth == 0:
                           repos_end = i
                           break
-              if repos_end is None:
-                  raise SystemExit("repositories-Block ist nicht geschlossen")
               repos = block[repo_open:repos_end + 1]
               additions = []
               if "https://repo.maven.apache.org/maven2" not in repos:
-                  additions.append('        maven { url = uri("https://repo.maven.apache.org/maven2") }')
+                  additions.append('maven { url = uri("https://repo.maven.apache.org/maven2") }')
               if "google()" not in repos:
-                  additions.append("        google()")
+                  additions.append("google()")
               if "mavenCentral()" not in repos:
-                  additions.append("        mavenCentral()")
+                  additions.append("mavenCentral()")
               if "gradlePluginPortal()" not in repos:
-                  additions.append("        gradlePluginPortal()")
+                  additions.append("gradlePluginPortal()")
               if additions:
-                  block = block[:repo_open + 1] + "\n" + "\n".join(additions) + block[repo_open + 1:]
+                  block = block[:repo_open + 1] + "\\n" + "\\n".join("        " + x for x in additions) + block[repo_open + 1:]
 
-          text = text[:start] + block + text[end + 1:]
-          path.write_text(text, encoding="utf-8")
-          print("Gradle plugin repositories:")
-          print(path.read_text(encoding="utf-8"))
+          path.write_text(text[:start] + block + text[end + 1:], encoding="utf-8")
           PY
 
       - name: Abhängigkeiten installieren
