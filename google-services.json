@@ -1,0 +1,63 @@
+{
+  "project_info": {
+    "project_number": "773111487498",
+    "project_id": "darts-party-2871c",
+    "storage_bucket": "darts-party-2871c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:773111487498:android:7f76b6f57d2ff9377bd3f3",
+        "android_client_info": {
+          "package_name": "de.dartsparty.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "773111487498-0u5suveu10tc8iklfq7m4c30n3a9m834.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "de.dartsparty.app",
+            "certificate_hash": "8fc81235708a6a62eccb6f6e0326ca9b879ba615"
+          }
+        },
+        {
+          "client_id": "773111487498-fg0d3l1kidq8pvhiuqkq3bhq4jjooho9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "de.dartsparty.app",
+            "certificate_hash": "cb20c46f7071180dd51c12c0d41632336ca7650f"
+          }
+        },
+        {
+          "client_id": "773111487498-ing9kn96de1ik77kv04vfq5sdht11oop.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "de.dartsparty.app",
+            "certificate_hash": "0308e7b932cd8ea26d35c38ca104402bd7bdbe13"
+          }
+        },
+        {
+          "client_id": "773111487498-sqeksb1q47db9lebn83mdflvi3p1njpo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHbpCW_dBzJ4DSbZZYfVbAHcSRjah_XtA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "773111487498-sqeksb1q47db9lebn83mdflvi3p1njpo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
