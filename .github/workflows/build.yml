@@ -68,7 +68,7 @@ jobs:
           if marker not in text:
               raise SystemExit("buildTypes-Block nicht gefunden.")
 
-          text = text.replace(marker, signing + "\\n" + marker, 1)
+          text = text.replace(marker, signing + "\n" + marker, 1)
           text = text.replace(
               'signingConfig = signingConfigs.getByName("debug")',
               'signingConfig = signingConfigs.getByName("release")'
@@ -140,7 +140,7 @@ jobs:
               if "gradlePluginPortal()" not in repos:
                   additions.append("gradlePluginPortal()")
               if additions:
-                  block = block[:repo_open + 1] + "\\n" + "\\n".join("        " + x for x in additions) + block[repo_open + 1:]
+                  block = block[:repo_open + 1] + "\n" + "\\n".join("        " + x for x in additions) + block[repo_open + 1:]
 
           path.write_text(text[:start] + block + text[end + 1:], encoding="utf-8")
           PY
