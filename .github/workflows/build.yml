@@ -80,6 +80,25 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
+      - name: Keystore-Zugangsdaten getrennt prüfen
+        working-directory: app/dart_party_android
+        env:
+          RELEASE_KEYSTORE: ${{ runner.temp }}/dart-party-release.jks
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "Prüfe Keystore und Store-Passwort..."
+          keytool -list -keystore "$RELEASE_KEYSTORE" -storepass "$ANDROID_STORE_PASSWORD" >/dev/null
+          echo "STORE_OK"
+          echo "Prüfe Alias..."
+          keytool -list -keystore "$RELEASE_KEYSTORE" -alias "$ANDROID_KEY_ALIAS" -storepass "$ANDROID_STORE_PASSWORD" >/dev/null
+          echo "ALIAS_OK"
+          echo "Prüfe privates Key-Passwort..."
+          keytool -certreq -alias "$ANDROID_KEY_ALIAS" -keystore "$RELEASE_KEYSTORE" -storepass "$ANDROID_STORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" -file "$RUNNER_TEMP/key-check.csr" >/dev/null
+          echo "KEY_PASSWORD_OK"
+
       - name: Gradle-Repositories für Kotlin-Abhängigkeiten ergänzen
         working-directory: app/dart_party_android
         run: |
