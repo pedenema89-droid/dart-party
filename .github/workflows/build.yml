@@ -96,7 +96,7 @@ jobs:
           keytool -list -keystore "$RELEASE_KEYSTORE" -alias "$ANDROID_KEY_ALIAS" -storepass "$ANDROID_STORE_PASSWORD" >/dev/null
           echo "ALIAS_OK"
           echo "Prüfe privates Key-Passwort..."
-          keytool -certreq -alias "$ANDROID_KEY_ALIAS" -keystore "$RELEASE_KEYSTORE" -storepass "$ANDROID_STORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" -file "$RUNNER_TEMP/key-check.csr" >/dev/null
+          keytool -certreq -alias "$ANDROID_KEY_ALIAS" -keystore "$RELEASE_KEYSTORE" -storepass "$ANDROID_STORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" -file "$RUNNER_TEMP/key-check.csr"
           echo "KEY_PASSWORD_OK"
 
       - name: Gradle-Repositories für Kotlin-Abhängigkeiten ergänzen
