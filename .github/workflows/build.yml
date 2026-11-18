@@ -151,6 +151,11 @@ jobs:
 
       - name: Android APK bauen
         working-directory: app/dart_party_android
+        env:
+          RELEASE_KEYSTORE: ${{ runner.temp }}/dart-party-release.jks
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: flutter build apk --release
 
       - name: SHA-1 Fingerabdruck anzeigen
