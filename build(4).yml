@@ -1,0 +1,126 @@
+name: Build Dart Party Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Flutter installieren
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Projekt entpacken
+        run: |
+          set -euo pipefail
+          mkdir -p app
+          ZIP_FILE="$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          files = []
+          for path in Path(".").iterdir():
+              match = re.fullmatch(r"dart-party-upload-fixed(?:\((\d+)\))?\.zip", path.name)
+              if match and path.is_file():
+                  files.append((int(match.group(1) or 0), path.name))
+
+          if not files:
+              raise SystemExit("Keine passende ZIP-Datei gefunden.")
+
+          print(max(files)[1])
+          PY
+          )"
+          echo "Verwende ZIP-Datei: $ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d app
+          test -f app/dart_party_android/pubspec.yaml
+
+      - name: Android-Projekt erzeugen
+        working-directory: app/dart_party_android
+        run: flutter create --project-name dart_party --platforms android .
+
+      - name: Gradle-Repositories für Kotlin-Abhängigkeiten ergänzen
+        working-directory: app/dart_party_android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("android/settings.gradle.kts")
+          text = path.read_text(encoding="utf-8")
+          start = text.find("pluginManagement")
+          if start < 0:
+              raise SystemExit("pluginManagement-Block fehlt")
+          open_brace = text.find("{", start)
+          depth = 0
+          end = None
+          for i in range(open_brace, len(text)):
+              if text[i] == "{":
+                  depth += 1
+              elif text[i] == "}":
+                  depth -= 1
+                  if depth == 0:
+                      end = i
+                      break
+          if end is None:
+              raise SystemExit("pluginManagement-Block ungültig")
+
+          block = text[start:end + 1]
+          repo_pos = block.find("repositories")
+          if repo_pos < 0:
+              insert = block.find("{") + 1
+              block = block[:insert] + """
+              repositories {
+                  maven { url = uri("https://repo.maven.apache.org/maven2") }
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+              """ + block[insert:]
+          else:
+              repo_open = block.find("{", repo_pos)
+              repos_end = None
+              depth = 0
+              for i in range(repo_open, len(block)):
+                  if block[i] == "{":
+                      depth += 1
+                  elif block[i] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          repos_end = i
+                          break
+              repos = block[repo_open:repos_end + 1]
+              additions = []
+              if "https://repo.maven.apache.org/maven2" not in repos:
+                  additions.append('maven { url = uri("https://repo.maven.apache.org/maven2") }')
+              if "google()" not in repos:
+                  additions.append("google()")
+              if "mavenCentral()" not in repos:
+                  additions.append("mavenCentral()")
+              if "gradlePluginPortal()" not in repos:
+                  additions.append("gradlePluginPortal()")
+              if additions:
+                  block = block[:repo_open + 1] + "\n" + "\n".join("        " + x for x in additions) + block[repo_open + 1:]
+
+          path.write_text(text[:start] + block + text[end + 1:], encoding="utf-8")
+          PY
+
+      - name: Abhängigkeiten installieren
+        working-directory: app/dart_party_android
+        run: flutter pub get
+
+      - name: Android Debug-APK bauen
+        working-directory: app/dart_party_android
+        run: flutter build apk --debug
+
+      - name: APK speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dart-Party-Android-Debug
+          path: app/dart_party_android/build/app/outputs/flutter-apk/app-debug.apk
