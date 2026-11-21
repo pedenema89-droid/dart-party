@@ -45,7 +45,25 @@ jobs:
       - name: Android-Projekt erzeugen
         working-directory: app/dart_party_android
         run: flutter create --project-name dart_party --platforms android .
-
+      - name: Android-Paketkennung und Mindestversion setzen
+        working-directory: app/dart_party_android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("android/app/build.gradle.kts")
+          text = path.read_text()
+          text, count = re.subn(
+              r'applicationId\s*=\s*"[^"]+"',
+              'applicationId = "de.dartsparty.app"',
+              text, count=1)
+          if count != 1:
+              raise SystemExit("Paketkennung nicht gefunden")
+          text = re.sub(
+              r'minSdk\s*=\s*flutter\.minSdkVersion',
+              'minSdk = 24', text, count=1)
+          path.write_text(text)
+          PY
       - name: Automatisch erzeugten Beispieltest entfernen
         working-directory: app/dart_party_android
         run: |
