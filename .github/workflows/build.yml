@@ -143,6 +143,14 @@ jobs:
         working-directory: app/dart_party_android
         run: flutter test
 
+      - name: Stabilen Debug-Schlüssel einrichten und SHA-1 anzeigen
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          echo "${{ secrets.DART_PARTY_DEBUG_KEYSTORE_BASE64 }}" | base64 --decode > "$HOME/.android/debug.keystore"
+          echo "SHA-1 für Firebase:"
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep "SHA1:"
+
       - name: Android Debug-APK bauen
         working-directory: app/dart_party_android
         run: flutter build apk --debug
