@@ -1,4 +1,4 @@
-name: Build Dart Party Android APK
+name: Build Dart Party Android APK and AAB
 
 on:
   workflow_dispatch:
@@ -45,32 +45,36 @@ jobs:
       - name: Android-Projekt erzeugen
         working-directory: app/dart_party_android
         run: flutter create --project-name dart_party --platforms android .
-      - name: Android-Paketkennung und Mindestversion setzen
+
+      - name: Android-Paketkennung und SDK-Versionen setzen
         working-directory: app/dart_party_android
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
+
           path = Path("android/app/build.gradle.kts")
           text = path.read_text()
-          text, count = re.subn(
-              r'applicationId\s*=\s*"[^"]+"',
-              'applicationId = "de.dartsparty.app"',
-              text, count=1)
-          if count != 1:
-              raise SystemExit("Paketkennung nicht gefunden")
-          text = re.sub(
-              r'minSdk\s*=\s*flutter\.minSdkVersion',
-              'minSdk = 24', text, count=1)
+
+          changes = [
+              (r'applicationId\s*=\s*"[^"]+"', 'applicationId = "de.dartsparty.app"', "Paketkennung"),
+              (r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', "minSdk"),
+              (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36', "compileSdk"),
+              (r'targetSdk\s*=\s*flutter\.targetSdkVersion', 'targetSdk = 36', "targetSdk"),
+          ]
+          for pattern, replacement, label in changes:
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f"{label} konnte nicht eindeutig gesetzt werden")
+
           path.write_text(text)
+          print("Paketkennung: de.dartsparty.app")
+          print("minSdk: 24 | compileSdk: 36 | targetSdk: 36")
           PY
+
       - name: Automatisch erzeugten Beispieltest entfernen
         working-directory: app/dart_party_android
         run: |
-          # flutter create erzeugt bei bestehenden Projekten gelegentlich einen
-          # veralteten widget_test.dart aus einem anderen App-Template.
-          # Dieser Beispieltest gehört nicht zu Dart Party und verhindert sonst
-          # den Testlauf (Import material_ui / MyApp / Icons.add).
           rm -f test/widget_test.dart
 
       - name: Dart-Party-App-Symbol in Android einsetzen
@@ -178,3 +182,14 @@ jobs:
         with:
           name: Dart-Party-Android-Debug
           path: app/dart_party_android/build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Android Release-AAB bauen (nur Buildtest, Debug-Signatur)
+        working-directory: app/dart_party_android
+        run: flutter build appbundle --release
+
+      - name: AAB als Testartefakt speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dart-Party-Android-AAB-Buildtest-Nicht-Play-Upload
+          path: app/dart_party_android/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
